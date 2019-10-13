@@ -43,7 +43,7 @@ void tipo_acceso1( char *data, int length )
 		int tamanio = 25;
 		while(numero1<100){
 			data[ (inicio+rand()%tamanio)%length] = rand();
-		numero1++
+		numero1++;
 		}
 		numero2++;
 	}
