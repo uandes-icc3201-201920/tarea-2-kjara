@@ -50,13 +50,13 @@ int main( int argc, char *argv[] )
 	char *physmem = page_table_get_physmem(pt);
 
 	if(!strcmp(program,"pattern1")) {
-		access_pattern1(virtmem,npages*PAGE_SIZE);
+		tipo_acceso1(virtmem,npages*PAGE_SIZE);
 
 	} else if(!strcmp(program,"pattern2")) {
-		access_pattern2(virtmem,npages*PAGE_SIZE);
+		tipo_acceso2(virtmem,npages*PAGE_SIZE);
 
 	} else if(!strcmp(program,"pattern3")) {
-		access_pattern3(virtmem,npages*PAGE_SIZE);
+		tipo_acceso3(virtmem,npages*PAGE_SIZE);
 
 	} else {
 		fprintf(stderr,"unknown program: %s\n",argv[3]);
