@@ -14,9 +14,30 @@ how to use the page table and disk interfaces.
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#define eliminar 0
+
+// Datos globales
+int disco_lectura =0, disco_escritura=0, paginasDefecto =0; 
+int npages, nframes;
+struct disk*disco =NULL;
+char * memoria_virtual = NULL;
+char * memoria_fisica = NULL;
+int adelante = 0;
+int atras = 0;
+int * arregloF;
+
+
+struct Marcos{
+	int pagina;
+	int bits;
+	
+};
+
+struct Marcos* tabla_de_marcos = NULL;
 
 void page_fault_handler( struct page_table *pt, int page )
 {
+
 	printf("page fault on page #%d\n",page);
 	exit(1);
 }
@@ -28,8 +49,9 @@ int main( int argc, char *argv[] )
 		return 1;
 	}
 
-	int npages = atoi(argv[1]);
-	int nframes = atoi(argv[2]);
+	npages = atoi(argv[1]);
+	nframes = atoi(argv[2]);
+	char algoritmoDeReemplazo = argv[3];
 	const char *program = argv[4];
 
 	struct disk *disk = disk_open("myvirtualdisk",npages);
@@ -68,3 +90,82 @@ int main( int argc, char *argv[] )
 
 	return 0;
 }
+
+// Funciones 
+
+void reemplazo_pagina_aleatorio(struct tabla_pagina*tp, int pagina){
+	int cuadro;
+	int bits;
+	int indice;
+
+	page_table_get_entry(tp, pagina, &cuadro, &bits); //fun. sirve para mapear directamente las paginas de memoria a marcos
+	
+
+	if(bits & PROT_READ){
+
+		bits = PROT_READ | PROT_WRITE;
+		indice = cuadro;
+	}
+	else if (!bits){
+
+		bits = PROT_READ;
+		indice = existencia_marco_libre();
+		
+		if(indice<0){
+			indice = (int) lrand48() % nframes;
+			eliminar_pagina(tp,indice);
+		}
+		disk_read(disco, pagina, &memoria_fisica[indice*PAGE_SIZE]);
+		disco_lectura++;
+	
+	}
+	else{
+		printf("Error en reemplazo de pagina aleatorio.\n");
+		exit(1);
+	}
+
+	page_table_set_entry(tp,pagina,indice, bits);
+
+	tabla_de_marcos[indice].bits = bits;
+	tabla_de_marcos[indice].pagina = pagina;
+	
+      // if(eliminar){page_table_print(tp);print("\n\n");}
+		
+}
+
+
+int existencia_marco_libre(){
+
+	int numero;
+	while(numero<nframes){
+		if(tabla_de_marcos[numero].bits == 0){
+			return numero;
+		}
+		numero++;
+	}
+	return -1;
+}
+
+void eliminar_pagina(struct tabla_pagina*tp, int numeroMarco){
+
+	if(tabla_de_marcos[numeroMarco].bits & PROT_WRITE){
+		disk_write(disco, tabla_de_marcos[numeroMarco].pagina, &memoria_fisica[numeroMarco*PAGE_SIZE]);
+		disco_escritura++;
+	}
+
+	page_table_set_entry(tp, tabla_de_marcos[numeroMarco].pagina, numeroMarco,0);
+	tabla_de_marcos[numeroMarco].bits = 0;
+	adelante = (adelante+1)%nframes;
+
+}
+
+
+
+
+
+
+
+
+
+
+
