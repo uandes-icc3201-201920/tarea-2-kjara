@@ -26,6 +26,11 @@ int adelante = 0;
 int atras = 0;
 int * arregloF;
 
+void eliminar_pagina(struct page_table*tp, int numeroMarco);
+int existencia_marco_libre();
+void reemplazo_pagina_FIFO(struct page_table*tp, int pagina);
+void reemplazo_pagina_aleatorio(struct page_table*tp, int pagina);
+
 
 struct Marcos{
 	int pagina;
@@ -93,7 +98,7 @@ int main( int argc, char *argv[] )
 
 // Funciones 
 
-void reemplazo_pagina_aleatorio(struct tabla_pagina*tp, int pagina){
+void reemplazo_pagina_aleatorio(struct page_table*tp, int pagina){
 	int cuadro;
 	int bits;
 	int indice;
@@ -133,6 +138,50 @@ void reemplazo_pagina_aleatorio(struct tabla_pagina*tp, int pagina){
 		
 }
 
+void reemplazo_pagina_FIFO(struct page_table*tp, int pagina){
+
+	int marco;
+	int bits;
+	int indice;
+	page_table_get_entry(tp,pagina,&marco,&bits);
+
+	if(bits & PROT_READ){
+		bits = PROT_WRITE | PROT_READ;
+		indice = marco;
+	}
+	else if(!bits){
+		bits = PROT_READ;
+		indice = existencia_marco_libre();
+	
+		if(indice<0){
+			if((adelante > atras) || (adelante<atras) || (adelante!=atras)){
+				printf("Error en desplazamiento de pagina.\n");
+				exit(1);
+			}
+		
+			else{
+				indice = arregloF[adelante];
+				eliminar_pagina(tp, indice);		
+			}
+		}
+		disk_read(disco,pagina,&memoria_fisica[indice*PAGE_SIZE]);
+		disco_lectura++;
+		arregloF[atras] = indice;
+		atras = (atras+1)%nframes;
+	}
+	else{
+		printf("Error en reemplazo de pagina FIFO.\n");
+		exit(1);
+	}
+	
+	page_table_set_entry(tp,pagina,indice,bits);
+	
+	tabla_de_marcos[indice].pagina = pagina;
+	tabla_de_marcos[indice].bits = bits;
+	 // if(eliminar){page_table_print(tp);print("\n\n");}
+
+}
+
 
 int existencia_marco_libre(){
 
@@ -146,7 +195,7 @@ int existencia_marco_libre(){
 	return -1;
 }
 
-void eliminar_pagina(struct tabla_pagina*tp, int numeroMarco){
+void eliminar_pagina(struct page_table*tp, int numeroMarco){
 
 	if(tabla_de_marcos[numeroMarco].bits & PROT_WRITE){
 		disk_write(disco, tabla_de_marcos[numeroMarco].pagina, &memoria_fisica[numeroMarco*PAGE_SIZE]);
