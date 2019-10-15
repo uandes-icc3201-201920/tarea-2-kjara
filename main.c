@@ -7,239 +7,264 @@ how to use the page table and disk interfaces.
 */
 
 #include "page_table.h"
-#include "disk.h"
 #include "program.h"
-#include <signal.h>
+#include "disk.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#define eliminar 0
-
-// Datos globales
-int disco_lectura =0, disco_escritura=0, paginasDefecto =0; 
-int npages, nframes;
-struct disk*disco =NULL;
-char *physmem;
-int adelante = 0;
-int atras = 0;
-int * arregloF;
-char *algoritmoDeReemplazo;
-
-void eliminar_pagina(struct page_table*pt, int numeroMarco);
-int existencia_marco_libre();
-void reemplazo_pagina_FIFO(struct page_table*pt, int page);
-void reemplazo_pagina_aleatorio(struct page_table*pt, int page);
+#include <time.h>
 
 
-struct Marcos{
+// DATOS 
+
+int paginasDefecto = 0;
+int disco_lectura = 0;
+int disco_escritura = 0;
+int npages;
+int nframes;
+int adelante=0;
+int atras=0;
+int *arrayF;
+char* virtmem;
+char* physmem;
+char* algoritmoReemplazo;
+struct disk* disk;
+struct Marco{
 	int page;
 	int bits;
-	
 };
+struct Marco* marcos;
 
-struct Marcos* tabla_de_marcos = NULL;
+
+void eliminar_pagina(struct page_table *pt, int numeroMarco);
+void reemplazo_pagina_aleatorio(struct page_table *pt, int page);
+void reemplazo_pagina_FIFO(struct page_table *pt, int page);
+
+
+
 
 void page_fault_handler( struct page_table *pt, int page )
 {
+
 	paginasDefecto++;
-	if(!strcmp(algoritmoDeReemplazo,"fifo")){
+	if(!strcmp(algoritmoReemplazo,"rand"))
+	{
+		reemplazo_pagina_aleatorio(pt, page);
+	}
+	else if(!strcmp(algoritmoReemplazo,"fifo"))
+	{
 		reemplazo_pagina_FIFO(pt, page);
 	}
-	else if(!strcmp(algoritmoDeReemplazo,"rand")){
-		reemplazo_pagina_aleatorio(pt,page);
-	}
-	else{
-
-	printf("page fault on page #%d\n",page);
-	exit(1);
+	
+	else 
+	{
+		printf("use: virtmem <npages> <nframes> <rand|fifo|custom> <sort|scan|focus>\n");
+		exit(1);
 	}
 }
 
 int main( int argc, char *argv[] )
 {
-	if(argc!=5) {
-		printf("use: virtmem <npages> <nframes> <lru|fifo> <access pattern>\n");
+	
+	if(argc!=5)
+	{
+		printf("use: virtmem <npages> <nframes> <rand|fifo> <a1|a2|a3>\n");
 		return 1;
 	}
 
+	
 	npages = atoi(argv[1]);
 	nframes = atoi(argv[2]);
-	algoritmoDeReemplazo = argv[3];
+	algoritmoReemplazo = argv[3];
 	const char *program = argv[4];
-
-	struct disk *disk = disk_open("myvirtualdisk",npages);
-	if(!disk) {
+	
+	
+	disk = disk_open("myvirtualdisk",npages);
+	if(!disk)
+	{
 		fprintf(stderr,"couldn't create virtual disk: %s\n",strerror(errno));
 		return 1;
 	}
-
-
 	struct page_table *pt = page_table_create( npages, nframes, page_fault_handler );
-	if(!pt) {
+	if(!pt)
+	{
 		fprintf(stderr,"couldn't create page table: %s\n",strerror(errno));
 		return 1;
 	}
 
-	arregloF = malloc(nframes*sizeof(int));
-	tabla_de_marcos = malloc(nframes*sizeof(tabla_de_marcos));
-
-	if(tabla_de_marcos==NULL){
+	arrayF = malloc (nframes * sizeof(int));
+	marcos = malloc(nframes * sizeof(struct Marco));
 	
-		printf("Error en espacio de tablas.\n");
+	
+	virtmem = page_table_get_virtmem(pt);
+	physmem = page_table_get_physmem(pt);
+
+
+	if(!strcmp(program,"a1"))
+	{
+		access_pattern1(virtmem,npages*PAGE_SIZE);
+	}
+	else if(!strcmp(program,"a2"))
+	{
+		access_pattern2(virtmem,npages*PAGE_SIZE);
+	}
+	else if(!strcmp(program,"a3"))
+	{
+		access_pattern3(virtmem,npages*PAGE_SIZE);
+	}
+	else
+	{
+		fprintf(stderr,"Programa desconocido: %s\n",argv[4]);
+		printf("use: virtmem <npages> <nframes> <rand|fifo> <a1|a2|a3>\n");
 		exit(1);
 	}
 
-	char *virtmem = page_table_get_virtmem(pt);
-
-	physmem = page_table_get_physmem(pt);
-
-	if(!strcmp(program,"pattern1")) {
-		access_pattern1(virtmem,npages*PAGE_SIZE);
-
-	} else if(!strcmp(program,"pattern2")) {
-		access_pattern2(virtmem,npages*PAGE_SIZE);
-
-	} else if(!strcmp(program,"pattern3")) {
-		access_pattern3(virtmem,npages*PAGE_SIZE);
-
-	} else {
-		fprintf(stderr,"unknown program: %s\n",argv[3]);
-
-	}
-
-	
+	// limpiar
+	free(marcos);
+	free(arrayF);
 	page_table_delete(pt);
 	disk_close(disk);
-	free(tabla_de_marcos);
-	free(arregloF);
-
+	
+	//Resultados
 	printf("Cantidad de paginas: %d\n", npages);
 	printf("Cantidad de marcos: %d\n", nframes);
-	printf("Algoritmo utilizado: %s\n", algoritmoDeReemplazo); 
+	printf("Algoritmo utilizado: %s\n", algoritmoReemplazo);
 	printf("Cantidad de lecturas a disco: %d\n", disco_lectura);
 	printf("Cantidad de escrituras a disco: %d\n", disco_escritura);
 	printf("Numero de faltas de pagina: %d\n", paginasDefecto);
 
-
 	return 0;
-
-	
-	
 }
 
-// Funciones 
 
-void reemplazo_pagina_aleatorio(struct page_table*pt, int page){
+
+
+void reemplazo_pagina_aleatorio(struct page_table *pt, int page)
+{
 	int cuadro;
 	int bits;
-	int indice;
+	int existencia_marco=-1;
+	page_table_get_entry(pt, page, &cuadro, &bits);
 
-	page_table_get_entry(pt, page, &cuadro, &bits); //fun. sirve para mapear directamente las paginas de memoria a marcos
-	
 
-	if(bits & PROT_READ){
+	if(bits & PROT_READ)
+	{
 
 		bits = PROT_READ | PROT_WRITE;
-		indice = cuadro;
-	}
-	else if (!bits){
-
+		existencia_marco = cuadro;
+	} 
+	else if (!bits)
+	{ 
+		
 		bits = PROT_READ;
-		indice = existencia_marco_libre();
 		
-		if(indice<0){
-			indice = (int) lrand48() % nframes;
-			eliminar_pagina(pt,indice);
-		}
-		disk_read(disco, page, &physmem[indice*PAGE_SIZE]);
-		disco_lectura++;
-	
-	}
-	else{
-		printf("Error en reemplazo de pagina aleatorio.\n");
-		exit(1);
-	}
-
-	page_table_set_entry(pt,page,indice, bits);
-
-	tabla_de_marcos[indice].bits = bits;
-	tabla_de_marcos[indice].page = page;
-	
-      // if(eliminar){page_table_print(tp);print("\n\n");}
-		
-}
-
-void reemplazo_pagina_FIFO(struct page_table*pt, int page){
-
-	int marco;
-	int bits;
-	int indice;
-	page_table_get_entry(pt,page,&marco,&bits);
-
-	if(bits & PROT_READ){
-		bits = PROT_WRITE | PROT_READ;
-		indice = marco;
-	}
-	else if(!bits){
-		bits = PROT_READ;
-		indice = existencia_marco_libre();
-	
-		if(indice<0){
-			if((adelante > atras) || (adelante<atras) || (adelante!=atras)){
-				printf("Error en desplazamiento de pagina.\n");
-				exit(1);
-			}
-		
-			else{
-				indice = arregloF[adelante];
-				eliminar_pagina(pt, indice);		
-			}
-		}
-		disk_read(disco,page,&physmem[indice*PAGE_SIZE]);
-		disco_lectura++;
-		arregloF[atras] = indice;
-		atras = (atras+1)%nframes;
-	}
-	else{
-		printf("Error en reemplazo de pagina FIFO.\n");
-		exit(1);
-	}
-	
-	page_table_set_entry(pt,page,indice,bits);
-	
-	tabla_de_marcos[indice].page = page;
-	tabla_de_marcos[indice].bits = bits;
-	 // if(eliminar){page_table_print(tp);print("\n\n");}
-
-}
-
-
-int existencia_marco_libre(){
-
-	int numero;
-	while(numero<nframes){
-		if(tabla_de_marcos[numero].bits == 0){
-			return numero;
-		}
+		int numero=0;
+		while(numero<nframes){
+			if(marcos[numero].bits==0)
+			existencia_marco= numero;
 		numero++;
 	}
-	return -1;
+
+		
+		if(existencia_marco<0)
+		{
+			
+			existencia_marco = (int) lrand48() % nframes;
+			eliminar_pagina(pt, existencia_marco);
+		}
+		disk_read(disk, page, &physmem[existencia_marco*PAGE_SIZE]);
+		disco_lectura++;
+
+	}
+	
+
+	page_table_set_entry(pt, page, existencia_marco, bits);
+	
+	marcos[existencia_marco].page = page;
+	marcos[existencia_marco].bits = bits;
+
+	
 }
 
-void eliminar_pagina(struct page_table*pt, int numeroMarco){
 
-	if(tabla_de_marcos[numeroMarco].bits & PROT_WRITE){
-		disk_write(disco, tabla_de_marcos[numeroMarco].page, &physmem[numeroMarco*PAGE_SIZE]);
+void reemplazo_pagina_FIFO(struct page_table *pt, int page)
+{
+	
+	int frame;
+	int bits;
+	int existencia_marco=-1;
+	page_table_get_entry(pt, page, &frame, &bits);
+
+	
+	if(bits & PROT_READ)
+	{
+		
+		bits = PROT_READ | PROT_WRITE;
+		existencia_marco = frame;
+	}
+	else if (!bits)
+	{ 
+		
+		bits = PROT_READ;
+		
+		
+		int numero=0;
+		while(numero<nframes){
+			if(marcos[numero].bits==0)
+			existencia_marco=numero;
+		numero++;
+		}
+	
+
+		if(existencia_marco< 0)
+		{
+			
+			if (adelante==atras)
+			{
+				
+				existencia_marco = arrayF[adelante];
+				eliminar_pagina(pt, existencia_marco);
+			}
+			
+		}
+		
+		disk_read(disk, page, &physmem[existencia_marco*PAGE_SIZE]);
+		disco_lectura++;
+		
+		arrayF[atras]=existencia_marco;
+		atras =(atras+1)%nframes;
+
+	}
+	
+	 
+	
+	page_table_set_entry(pt, page, existencia_marco, bits);
+
+	
+	marcos[existencia_marco].page = page;
+	marcos[existencia_marco].bits = bits;
+	
+
+}
+
+
+
+
+void eliminar_pagina(struct page_table *pt, int numeroMarco)
+{
+	
+	if(marcos[numeroMarco].bits & PROT_WRITE)
+	{
+		disk_write(disk, marcos[numeroMarco].page, &physmem[numeroMarco*PAGE_SIZE]);
 		disco_escritura++;
 	}
-
-	page_table_set_entry(pt, tabla_de_marcos[numeroMarco].page, numeroMarco,0);
-	tabla_de_marcos[numeroMarco].bits = 0;
-	adelante = (adelante+1)%nframes;
+	
+	page_table_set_entry(pt, marcos[numeroMarco].page, numeroMarco, 0);
+	marcos[numeroMarco].bits = 0;
+	adelante=(adelante+1)%nframes;
 
 }
-
 
 
 
