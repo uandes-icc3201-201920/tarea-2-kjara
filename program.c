@@ -23,7 +23,7 @@ static int compare_bytes( const void *pa, const void *pb )
 	}
 }
 
-void tipo_acceso1( char *data, int length )
+void access_pattern1( char *data, int length )
 
 {
 	// Datos
@@ -55,7 +55,7 @@ void tipo_acceso1( char *data, int length )
 	printf("El resultado del tipo de acceso1 es:%d\n", suma);		
 }
 
-void tipo_acceso2( char *data, int length )
+void access_pattern2( char *data, int length )
 {
 	//srand
 	int suma = 0;
@@ -76,7 +76,7 @@ void tipo_acceso2( char *data, int length )
 	printf("El resultado del tipo de acceso2 es:%d\n", suma);
 }
 
-void tipo_acceso3( char *cdata, int length )
+void access_pattern3( char *cdata, int length )
 {
 	unsigned numero1 = 0;
 	unsigned numero2 = 0;
