@@ -52,7 +52,7 @@ void access_pattern1( char *data, int length )
 	for (numero1 = 0; numero1<length; numero1++){
 		suma +=data[numero1];	
 	}
-	printf("El resultado del tipo de acceso1 es:%d\n", suma);		
+	printf("El resultado del tipo de acceso1 es:\n");		
 }
 
 void access_pattern2( char *data, int length ) //sort
@@ -73,24 +73,15 @@ void access_pattern2( char *data, int length ) //sort
 		numero1++;
 	}
 
-	printf("El resultado del tipo de acceso2 es:%d\n", suma);
+	printf("El resultado del tipo de acceso2 es:\n");
 }
 
-void access_pattern3( char *cdata, int length ) //ordenamiendo mayorMenor
+void access_pattern3( char *cdata, int length ) //secuencial
 {
-	int auxiliar,valor1, valor2;
+	
 
-	for (valor1=0;valor1<length-1;valor1++){
-
-		for(valor2=valor1+1;valor2<length;valor2++){
-
-			if(cdata[valor1] < cdata[valor2]){
-				auxiliar = cdata[valor1];
-				cdata[valor1] = cdata[valor2];
-				cdata[valor2] = auxiliar;
-			}
-		}
+	for (int numero1 = 0; numero1<length; numero1++){
+		cdata[numero1] = 0;	
 	}
-
-	printf("El resultado del tipo de acceso3 es:%d\n", auxiliar);	
+	printf("El resultado del tipo de acceso3 es:\n");	
 }
