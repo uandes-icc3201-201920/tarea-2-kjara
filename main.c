@@ -26,6 +26,7 @@ int nframes;
 int adelante=0;
 int atras=0;
 int *arrayF;
+int access_pattern;
 char* virtmem;
 char* physmem;
 char* algoritmoReemplazo;
@@ -104,14 +105,17 @@ int main( int argc, char *argv[] )
 	if(!strcmp(program,"a1"))
 	{
 		access_pattern1(virtmem,npages*PAGE_SIZE);
+		access_pattern = 1;
 	}
 	else if(!strcmp(program,"a2"))
 	{
 		access_pattern2(virtmem,npages*PAGE_SIZE);
+		access_pattern = 2;
 	}
 	else if(!strcmp(program,"a3"))
 	{
 		access_pattern3(virtmem,npages*PAGE_SIZE);
+		access_pattern = 3;
 	}
 	else
 	{
@@ -119,6 +123,7 @@ int main( int argc, char *argv[] )
 		printf("use: virtmem <npages> <nframes> <rand|fifo> <a1|a2|a3>\n");
 		exit(1);
 	}
+	printf(" ----=== Resultados patron de acceso %d ===----\n", access_pattern);
 
 	// limpiar
 	free(marcos);
