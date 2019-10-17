@@ -23,16 +23,12 @@ static int compare_bytes( const void *pa, const void *pb )
 	}
 }
 
-void access_pattern1( char *data, int length )
-
-{
+void access_pattern1( char *data, int length ){
 	// Datos
 	srand(5000);
-
 	int suma = 0;
 	int numero1 = 0;
 	int numero2 = 0;
-
 
 	for (numero1 = 0; numero1<length; numero1++){
 		data[numero1] = 0;	
@@ -48,14 +44,12 @@ void access_pattern1( char *data, int length )
 		numero2++;
 	}
 
-
 	for (numero1 = 0; numero1<length; numero1++){
 		suma +=data[numero1];	
 	}		
 }
 
-void access_pattern2( char *data, int length ) //sort
-{
+void access_pattern2( char *data, int length ){ //sort
 	srand(5000); 
 	int suma = 0;
 	int numero1= 0;
@@ -71,13 +65,9 @@ void access_pattern2( char *data, int length ) //sort
 		suma+= data[numero1];
 		numero1++;
 	}
-
 }
 
-void access_pattern3( char *cdata, int length ) //secuencial
-{
-	
-
+void access_pattern3( char *cdata, int length ){ //secuencial
 	for (int numero1 = 0; numero1<length; numero1++){
 		cdata[numero1] = 0;	
 	}	
