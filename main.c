@@ -59,7 +59,7 @@ void page_fault_handler( struct page_table *pt, int page )
 	
 	else 
 	{
-		printf("use: virtmem <npages> <nframes> <rand|fifo|custom> <sort|scan|focus>\n");
+		printf("use: virtmem <npages> <nframes> <rand|fifo> <a1|a2|a3>\n");
 		exit(1);
 	}
 }
